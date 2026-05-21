@@ -16,17 +16,17 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install poppler
+      - name: Download and extract poppler
         run: |
           Invoke-WebRequest -Uri "https://github.com/oschwartz10612/poppler-windows/releases/download/v24.08.0-0/Release-24.08.0-0.zip" -OutFile poppler.zip
           Expand-Archive poppler.zip -DestinationPath poppler
-          echo "${{ github.workspace }}\poppler\poppler-24.08.0\Library\bin" >> $env:GITHUB_PATH
+          Copy-Item -Path "poppler\poppler-24.08.0\Library\bin" -Destination "poppler_bin" -Recurse
 
       - name: Install dependencies
         run: pip install pdf2image pillow pyinstaller
 
       - name: Build EXE
-        run: pyinstaller --onefile --name pdf_to_jpeg pdf_to_jpeg.py
+        run: pyinstaller --onefile --name pdf_to_jpeg --add-binary "poppler_bin;poppler_bin" pdf_to_jpeg.py
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4

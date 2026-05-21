@@ -1,17 +1,21 @@
 import sys
+import os
+import platform
 from pathlib import Path
 from pdf2image import convert_from_path
 
-MAX_SIZE = (1024, 1024)  # maksimum genişlik ve yükseklik (piksel)
+MAX_SIZE = (1024, 1024)
 
-# exe olarak çalışırken de scriptin bulunduğu klasörü baz al
 if getattr(sys, "frozen", False):
     BASE_DIR = Path(sys.executable).parent
+    # Windows exe içine gömülü poppler
+    if platform.system() == "Windows":
+        POPPLER_PATH = os.path.join(sys._MEIPASS, "poppler_bin")
+    else:
+        POPPLER_PATH = "/opt/homebrew/bin"
 else:
     BASE_DIR = Path(__file__).parent
-
-import platform
-POPPLER_PATH = "/opt/homebrew/bin" if platform.system() == "Darwin" else None
+    POPPLER_PATH = "/opt/homebrew/bin" if platform.system() == "Darwin" else None
 
 pdfs_dir = BASE_DIR / "pdfs"
 output_dir = BASE_DIR / "output"
