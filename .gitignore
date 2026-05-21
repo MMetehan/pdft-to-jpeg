@@ -1,0 +1,19 @@
+# PyInstaller
+build/
+dist/
+*.spec
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# macOS
+.DS_Store
+
+# Klasörler / Folders
+pdfs/
+output/
+
+# Claude Code
+.claude/

@@ -1,0 +1,32 @@
+import sys
+from pathlib import Path
+from pdf2image import convert_from_path
+
+MAX_SIZE = (1024, 1024)  # maksimum genişlik ve yükseklik (piksel)
+
+# exe olarak çalışırken de scriptin bulunduğu klasörü baz al
+if getattr(sys, "frozen", False):
+    BASE_DIR = Path(sys.executable).parent
+else:
+    BASE_DIR = Path(__file__).parent
+
+POPPLER_PATH = "/opt/homebrew/bin"
+
+pdfs_dir = BASE_DIR / "pdfs"
+output_dir = BASE_DIR / "output"
+output_dir.mkdir(exist_ok=True)
+
+pdf_files = list(pdfs_dir.glob("*.pdf"))
+if not pdf_files:
+    print("pdfs/ klasöründe PDF bulunamadı.")
+else:
+    for pdf_path in pdf_files:
+        print(f"İşleniyor: {pdf_path.name}")
+        pages = convert_from_path(pdf_path, dpi=150, poppler_path=POPPLER_PATH)
+        for i, page in enumerate(pages, start=1):
+            page.thumbnail(MAX_SIZE)
+            output_path = output_dir / f"{pdf_path.stem}_sayfa_{i}.jpg"
+            page.save(output_path, "JPEG", quality=85)
+            print(f"  Kaydedildi: {output_path} ({page.width}x{page.height})")
+
+    print("Tamamlandı.")
