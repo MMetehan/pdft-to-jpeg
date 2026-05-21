@@ -10,7 +10,8 @@ if getattr(sys, "frozen", False):
 else:
     BASE_DIR = Path(__file__).parent
 
-POPPLER_PATH = "/opt/homebrew/bin"
+import platform
+POPPLER_PATH = "/opt/homebrew/bin" if platform.system() == "Darwin" else None
 
 pdfs_dir = BASE_DIR / "pdfs"
 output_dir = BASE_DIR / "output"
