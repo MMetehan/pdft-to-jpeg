@@ -77,12 +77,21 @@ jobs:
             BINARY_ARGS+=("--add-binary" "$lib:poppler_bin/libs")
           done
           pyinstaller --onefile --name pdf_to_jpeg "${BINARY_ARGS[@]}" pdf_to_jpeg.py
-          mv dist/pdf_to_jpeg dist/pdf_to_jpeg_macos_${{ matrix.arch }}
+
+      - name: Package as DMG
+        run: |
+          mkdir -p dmg_tmp
+          cp dist/pdf_to_jpeg dmg_tmp/
+          hdiutil create \
+            -volname "pdf_to_jpeg" \
+            -srcfolder dmg_tmp \
+            -ov -format UDZO \
+            dist/pdf_to_jpeg_macos_${{ matrix.arch }}.dmg
 
       - uses: actions/upload-artifact@v4
         with:
           name: macos-${{ matrix.arch }}-build
-          path: dist/pdf_to_jpeg_macos_${{ matrix.arch }}
+          path: dist/pdf_to_jpeg_macos_${{ matrix.arch }}.dmg
 
   release:
     needs: [build-windows, build-macos]
@@ -99,6 +108,6 @@ jobs:
         with:
           files: |
             pdf_to_jpeg_windows.exe
-            pdf_to_jpeg_macos_arm64
-            pdf_to_jpeg_macos_x86_64
+            pdf_to_jpeg_macos_arm64.dmg
+            pdf_to_jpeg_macos_x86_64.dmg
           generate_release_notes: true
