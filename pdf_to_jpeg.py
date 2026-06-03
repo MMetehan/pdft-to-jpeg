@@ -8,17 +8,14 @@ MAX_SIZE = (1024, 1024)
 
 if getattr(sys, "frozen", False):
     BASE_DIR = Path(sys.executable).parent
-    # Windows exe içine gömülü poppler
-    if platform.system() == "Windows":
-        POPPLER_PATH = os.path.join(sys._MEIPASS, "poppler_bin")
-    else:
-        POPPLER_PATH = "/opt/homebrew/bin"
+    POPPLER_PATH = os.path.join(sys._MEIPASS, "poppler_bin")
 else:
     BASE_DIR = Path(__file__).parent
     POPPLER_PATH = "/opt/homebrew/bin" if platform.system() == "Darwin" else None
 
 pdfs_dir = BASE_DIR / "pdfs"
 output_dir = BASE_DIR / "output"
+pdfs_dir.mkdir(exist_ok=True)
 output_dir.mkdir(exist_ok=True)
 
 pdf_files = list(pdfs_dir.glob("*.pdf"))

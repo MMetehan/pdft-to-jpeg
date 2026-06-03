@@ -1,14 +1,14 @@
-name: Build Windows EXE
+name: Build and Release
 
 on:
   push:
-    branches: [main]
+    tags:
+      - 'v*.*.*'
   workflow_dispatch:
 
 jobs:
-  build:
+  build-windows:
     runs-on: windows-latest
-
     steps:
       - uses: actions/checkout@v4
 
@@ -16,7 +16,7 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Download and extract poppler
+      - name: Download poppler
         run: |
           Invoke-WebRequest -Uri "https://github.com/oschwartz10612/poppler-windows/releases/download/v24.08.0-0/Release-24.08.0-0.zip" -OutFile poppler.zip
           Expand-Archive poppler.zip -DestinationPath poppler
@@ -28,8 +28,77 @@ jobs:
       - name: Build EXE
         run: pyinstaller --onefile --name pdf_to_jpeg --add-binary "poppler_bin;poppler_bin" pdf_to_jpeg.py
 
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
+      - name: Rename for release
+        run: Move-Item dist\pdf_to_jpeg.exe dist\pdf_to_jpeg_windows.exe
+
+      - uses: actions/upload-artifact@v4
         with:
-          name: pdf_to_jpeg_windows
-          path: dist/pdf_to_jpeg.exe
+          name: windows-build
+          path: dist/pdf_to_jpeg_windows.exe
+
+  build-macos:
+    strategy:
+      matrix:
+        include:
+          - runs-on: macos-latest
+            arch: arm64
+          - runs-on: macos-13
+            arch: x86_64
+    runs-on: ${{ matrix.runs-on }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install system dependencies
+        run: brew install poppler dylibbundler
+
+      - name: Install Python dependencies
+        run: pip install pdf2image pillow pyinstaller
+
+      - name: Bundle poppler with dylibs
+        run: |
+          POPPLER_PREFIX=$(brew --prefix poppler)
+          mkdir -p poppler_bin
+          cp "$POPPLER_PREFIX/bin/pdftoppm" poppler_bin/
+          cp "$POPPLER_PREFIX/bin/pdfinfo" poppler_bin/
+          dylibbundler -od -b \
+            -x poppler_bin/pdftoppm \
+            -x poppler_bin/pdfinfo \
+            -d poppler_bin/libs \
+            -p @executable_path/libs
+
+      - name: Build binary
+        run: |
+          BINARY_ARGS=("--add-binary" "poppler_bin/pdftoppm:poppler_bin" "--add-binary" "poppler_bin/pdfinfo:poppler_bin")
+          for lib in poppler_bin/libs/*.dylib; do
+            BINARY_ARGS+=("--add-binary" "$lib:poppler_bin/libs")
+          done
+          pyinstaller --onefile --name pdf_to_jpeg "${BINARY_ARGS[@]}" pdf_to_jpeg.py
+          mv dist/pdf_to_jpeg dist/pdf_to_jpeg_macos_${{ matrix.arch }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-${{ matrix.arch }}-build
+          path: dist/pdf_to_jpeg_macos_${{ matrix.arch }}
+
+  release:
+    needs: [build-windows, build-macos]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            pdf_to_jpeg_windows.exe
+            pdf_to_jpeg_macos_arm64
+            pdf_to_jpeg_macos_x86_64
+          generate_release_notes: true
